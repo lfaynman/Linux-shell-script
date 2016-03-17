@@ -1,0 +1,49 @@
+#!/bin/bash
+
+#subnet 172.16.181.0 netmask 255.255.255.0 {
+#  range 172.16.181.64 172.16.181.220;
+#  option domain-name "ntpc.gov.tw";
+#  option domain-name-servers 172.19.1.2, 172.19.1.1;
+#  option routers 172.16.181.254;
+#  option broadcast-address 172.16.181.255;
+#  default-lease-time 604800;
+#  max-lease-time 864000;
+#  
+#  include "/etc/dhcp/dhcp.d/ipphone_dhcp";
+#}
+
+autoprovfile=/usr/local/voip/phone/autoprov/TPH168GEL_A1G
+dhcpfile=/etc/dhcp/dhcp.d/ipphone_dhcp
+#voipip=$(ifconfig $2|sed 's/^.*addr: //g'|grep inet|awk -F":" '{ print $2 }' |awk '{ print $1 }')
+
+sed '1,2d' $1 |awk '{print $2}' > dummy
+sed '1,2d' $1 |awk '{print $3}' > absip
+sed '1,2d' $1 |awk '{print $4}' > mac
+sed '1,2d' $1 |awk '{print $5}' > phone_num
+cat mac|sed 's/^\(.\{10\}\)/\1:/'|sed 's/^\(.\{8\}\)/\1:/'|sed 's/^\(.\{6\}\)/\1:/'|sed 's/^\(.\{4\}\)/\1:/'|sed 's/^\(.\{2\}\)/\1:/'>remac
+readarray -t dummyarray < dummy
+readarray -t iparray < absip
+readarray -t macarray < mac
+readarray -t numarray < phone_num
+readarray -t remacarray < remac
+rm -f dummy absip mac phone_num remac
+
+[ -d /etc/dhcp/dhcp.d ] && rm -rf $dhcpfile || (mkdir -p /etc/dhcp/dhcp.d && touch $dhcpfile)
+[ -f $autoprovfile ] && echo Autoprovision session buliding files.....|| (echo /usr/local/voip/phone/autoprov/\"Autoprovsion file\" not exit && exit 1)
+for ((x=0;x<${#macarray[*]};x++))
+do
+echo -e "host TPH168GE${macarray[x]} {">>$dhcpfile
+echo -e "\thardware ethernet ${remacarray[x]};">>$dhcpfile
+echo -e "\tfixed-address ${dummyarray[x]};">>$dhcpfile
+echo -e "\toption routers 192.168.250.253;">>$dhcpfile
+echo -e "\toption domain-name-servers 192.168.250.253;">>$dhcpfile
+echo -e "\toption tftp-server-name \"192.168.250.253\";">>$dhcpfile
+echo -e "\toption ntp-servers 192.168.250.253;">>$dhcpfile
+echo -e "\tdefault-lease-time 600;">>$dhcpfile
+echo -e "\tmax-lease-time 7200;">>$dhcpfile
+echo -e "}\n\n">>$dhcpfile
+cat $autoprovfile|sed "s/m1UserName=/&${numarray[x]}/"|sed "s/m1DisplayName=/&${numarray[x]}/"|sed "s/m1RegisterName=/&${numarray[x]}/"\
+|sed "s/IPAddress=/&${iparray[x]}/" > /usr/local/voip/phone/autoprov/DPH168GE/${macarray[x]}.dat
+done
+echo done
+
