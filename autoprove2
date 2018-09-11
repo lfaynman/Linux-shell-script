@@ -1,0 +1,39 @@
+#!/bin/bash
+
+Fanvilcfg=/usr/local/voip/phone/Fanvil/x3s
+#[ -f $Extensions_data.csv ] && echo "" || { echo The Extensions file -  \" Extensions_data.csv \" not exit ; exit 1; }
+[ -f $Fanvilcfg ] && echo Autoprovision session buliding files.....|| { echo The main configure file -  \" /usr/local/voip/phone/Fanvil \" not exit ; exit 1; }
+
+IFS=$'\n'
+
+dos2unix exten.csv >/dev/null 2>&1
+sipReg=($(sed '1,2d' exten.csv|grep "^NO"|awk -F"," '{print $2,$9,$4,$7,$(NF)}'))
+readarray -t cfg < $Fanvilcfg
+
+for index in ${sipReg[*]}
+do
+num=$(echo $index|awk '{print $1}')
+passwd=$(echo $index|awk '{print $2}')
+cname=$(echo $index|awk '{print $3}')
+cdep=$(echo $index|awk '{print $4}')
+provfile=$(echo $index|awk '{print $5}')
+        cfg[227]="SIP1 Phone Number  :"$num
+        cfg[228]="SIP1 Display Name  :"$cdep" "$num$cname
+        cfg[232]="SIP1 Register User :"$num
+        cfg[233]="SIP1 Register Pswd :"$passwd
+        cfg[238]="SIP1 Proxy User    :"$num
+        cfg[239]="SIP1 Proxy Pswd    :"$passwd
+#       cfg[350]="SIP2 Phone Number  :"$num
+#       cfg[351]="SIP2 Display Name  :"
+#       cfg[355]="SIP2 Register User :"$num
+#       cfg[356]="SIP2 Register Pswd :"$num
+#       cfg[361]="SIP2 Proxy User    :"$num
+#       cfg[362]="SIP2 Proxy Pswd    :"$num
+        cfg[572]="LCD Title          :"$cdep$num
+        echo  "${cfg[*]}" > /var/lib/tftpboot/$provfile.cfg
+#       break
+#       dt=$(($(date +%s) - $st))
+#       [[ $dt > 10  &&  $(( $dt % 10 )) == 0 ]] && echo -e "\n Procedure still running ... ...\n"
+done
+
+echo "Done."
