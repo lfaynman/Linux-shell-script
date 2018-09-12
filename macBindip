@@ -1,0 +1,33 @@
+#!/bin/bash
+
+dhcpFile=/etc/dhcp/dhcp.d/ipphone_dhcpip.conf
+Fanvilcfg=/usr/local/voip/phone/Fanvil/x3s
+#[ -f $Fanvilcfg ] && echo Autoprovision session buliding files.....|| { echo The main configure file -  \" /usr/local/voip/phone/Fanvil \" not exit ; exit 1; }
+[ -d /etc/dhcp/dhcp.d ] && rm -rf $dhcpfile || (mkdir -p /etc/dhcp/dhcp.d && touch $dhcpfile)
+IFS=$'\n'
+
+dos2unix exten.csv >/dev/null 2>&1
+#sipReg=($(sed '1,2d' exten.csv|grep "^NO"|awk -F"," '{print $2,$9,$4,$7,$(NF)}'))
+#readarray -t cfg < $Fanvilcfg
+setDhcp=($(sed '1,2d' exten.csv|grep "^NO"|awk -F"," '{print $2,$(NF-1),$(NF)}'))
+#readarray -t cfg < $setDhcp
+for index in ${setDhcp[*]}
+do
+
+num=$(echo $index|awk '{print $1}')
+mac=$(echo $index|awk '{print $(NF)}'|sed 's/^\(.\{10\}\)/\1:/'|sed 's/^\(.\{8\}\)/\1:/'|sed 's/^\(.\{6\}\)/\1:/'|sed 's/^\(.\{4\}\)/\1:/'|sed 's/^\(.\{2\}\)/\1:/')
+ip=$(echo $index|awk '{print $(NF-1)}')
+
+echo -e "host Fanvil_$num {">>$dhcpFile
+echo -e "\thardware ethernet $mac;">>$dhcpFile
+echo -e "\tfixed-address $ip;">>$dhcpFile
+#echo -e "\toption routers 192.168.201.210;">>$dhcpFile
+#echo -e "\toption broadcast-address 192.168.201.255;">>$dhcpFile
+#echo -e "\toption tftp-server-name \"192.168.201.210\";">>$dhcpFile
+#echo -e "\toption domain-name \"voip.ippbx\";">>$dhcpFile
+#echo -e "\tdefault-lease-time 600;">>$dhcpFile
+#echo -e "\tmax-lease-time 1800;">>$dhcpFile
+echo -e "}\n\n">>$dhcpFile
+
+done
+echo "Done."
