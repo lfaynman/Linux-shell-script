@@ -24,9 +24,9 @@ echo -e "\tfixed-address $ip;">>$dhcpFile
 echo -e "\toption routers 192.168.201.210;">>$dhcpFile
 echo -e "\toption broadcast-address 192.168.201.255;">>$dhcpFile
 echo -e "\toption tftp-server-name \"192.168.201.210\";">>$dhcpFile
-#echo -e "\toption domain-name \"voip.ippbx\";">>$dhcpFile
-#echo -e "\tdefault-lease-time 600;">>$dhcpFile
-#echo -e "\tmax-lease-time 1800;">>$dhcpFile
+echo -e "\toption domain-name \"voip.ippbx\";">>$dhcpFile
+echo -e "\tdefault-lease-time 600;">>$dhcpFile
+echo -e "\tmax-lease-time 1800;">>$dhcpFile
 echo -e "}\n\n">>$dhcpFile
 
 done
