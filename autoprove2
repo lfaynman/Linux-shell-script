@@ -1,15 +1,35 @@
 #!/bin/bash
 
 Fanvilcfg=/usr/local/voip/phone/Fanvil/x3s
-#[ -f $Extensions_data.csv ] && echo "" || { echo The Extensions file -  \" Extensions_data.csv \" not exit ; exit 1; }
-[ -f $Fanvilcfg ] && echo Autoprovision session buliding files.....|| { echo The main configure file -  \" /usr/local/voip/phone/Fanvil \" not exit ; exit 1; }
 
+[ -f Extensions_data.csv ] && echo "" || { echo The Extensions file -  \" Extensions_data.csv \" not exit ; exit 1; }
+[ -f $Fanvilcfg ] && echo Autoprovision session buliding files.....|| { echo The main configure file -  \" /usr/local/voip/phone/Fanvil \" not exit ; exit 1; }
+#iconv -f BIG-5 -t UTF-8 Extensions_data.csv -o txt 2>&1
 IFS=$'\n'
 
+searchString1="SIP1 Phone Number  :"
+searchString2="SIP1 Display Name  :"
+searchString3="SIP1 Register User :"
+searchString4="SIP1 Register Pswd :"
+searchString5="SIP1 Proxy User    :"
+searchString6="SIP1 Proxy Pswd    :"
+searchString7="LCD Title          :"
+itlc1=$(grep -no "$searchString1" $Fanvilcfg |awk -F":" '{print $1}')
+itlc2=$(grep -no "$searchString2" $Fanvilcfg |awk -F":" '{print $1}')
+itlc3=$(grep -no "$searchString3" $Fanvilcfg |awk -F":" '{print $1}')
+itlc4=$(grep -no "$searchString4" $Fanvilcfg |awk -F":" '{print $1}')
+itlc5=$(grep -no "$searchString5" $Fanvilcfg |awk -F":" '{print $1}')
+itlc6=$(grep -no "$searchString6" $Fanvilcfg |awk -F":" '{print $1}')
+itlc7=$(grep -no "$searchString7" $Fanvilcfg |awk -F":" '{print $1}')
+
+cp -n Extensions_data.csv exten.csv 2>&1
 dos2unix exten.csv >/dev/null 2>&1
+[ $(file -bi exten.csv|awk '{print $2}') == "charset=iso-8859-1" ] && (iconv -f BIG-5 -t UTF-8 exten.csv -o exten.csv)
+
 sipReg=($(sed '1,2d' exten.csv|grep "^NO"|awk -F"," '{print $2,$9,$4,$7,$(NF)}'))
 readarray -t cfg < $Fanvilcfg
 
+#st=$(date +%s)
 for index in ${sipReg[*]}
 do
 num=$(echo $index|awk '{print $1}')
@@ -17,23 +37,22 @@ passwd=$(echo $index|awk '{print $2}')
 cname=$(echo $index|awk '{print $3}')
 cdep=$(echo $index|awk '{print $4}')
 provfile=$(echo $index|awk '{print $(NF)}')
-        cfg[227]="SIP1 Phone Number  :"$num
-        cfg[228]="SIP1 Display Name  :"$cdep" "$num$cname
-        cfg[232]="SIP1 Register User :"$num
-        cfg[233]="SIP1 Register Pswd :"$passwd
-        cfg[238]="SIP1 Proxy User    :"$num
-        cfg[239]="SIP1 Proxy Pswd    :"$passwd
-#       cfg[350]="SIP2 Phone Number  :"$num
-#       cfg[351]="SIP2 Display Name  :"
-#       cfg[355]="SIP2 Register User :"$num
-#       cfg[356]="SIP2 Register Pswd :"$num
-#       cfg[361]="SIP2 Proxy User    :"$num
-#       cfg[362]="SIP2 Proxy Pswd    :"$num
-        cfg[572]="LCD Title          :"$cdep$num
-        echo  "${cfg[*]}" > /var/lib/tftpboot/$provfile.cfg
+cfg[$itlc1-1]=$searchString1$num
+cfg[$itlc2-1]=$searchString2$cdep" "$num$cname
+cfg[$itlc3-1]=$searchString3$num
+cfg[$itlc4-1]=$searchString4$passwd
+cfg[$itlc5-1]=$searchString5$num
+cfg[$itlc6-1]=$searchString6$passwd
+cfg[$itlc7-1]=$searchString7$cdep$num
+echo  "${cfg[*]}" > /var/lib/tftpboot/$provfile.cfg
+#echo  "${cfg[*]}" > /tmp/$provfile.cfg
 #       break
 #       dt=$(($(date +%s) - $st))
 #       [[ $dt > 10  &&  $(( $dt % 10 )) == 0 ]] && echo -e "\n Procedure still running ... ...\n"
 done
 
+rm -f exten.csv 2>&1
 echo "Done."
+#ls -l --color=auto /var/lib/tftpboot/
+
+#grep -no "SIP1 Phone Number  :" /usr/local/voip/phone/Fanvil/x3s |awk -F":" '{print $1}'
