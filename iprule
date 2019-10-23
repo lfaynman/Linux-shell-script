@@ -1,0 +1,99 @@
+#!/bin/bash
+FILE="/usr/local/iprule/iproute2-table.rule"
+
+INT1=vlan207
+INT2=vlan307
+INT1_IP=$(ifconfig $INT1|grep inet|awk '{print $2}'|head -n 1)
+INT2_IP=$(ifconfig $INT2|grep inet|awk '{print $2}'|head -n 1)
+
+IP_TB=("Hinet_147" "Hinet_146")
+ipaddr1ToIP_TB1="192.168.27.0/27"
+
+if [ -f $FILE ] ; then
+   rm -f $FILE;
+   touch $FILE;
+fi
+
+IFS=$'\n'
+rtDef=($(ip route|sed /default/d))
+rt146=($(ip route show table ${IP_TB[1]}|sed /default/d))
+rt147=($(ip route show table ${IP_TB[0]}|sed /default/d))
+rt=($(cat /etc/iproute2/rt_tables |sed -e /#/d -e /unspec/d -e /local/d -e /main/d -e /default/d|awk '{print $2}'))
+f0=0
+f1=0
+for ((i=0;i<${#rtDef[@]};i++))
+do
+        for((j=0;j<${#rt147[@]};j++))
+        do
+                if [ ${rtDef[$i]} = ${rt147[$j]} ]; then
+                ((f0=1))
+                break
+                else
+                ((f0=0))
+                fi
+        done
+
+        for((j=0;j<${#rt146[@]};j++))
+        do
+                if [ ${rtDef[$i]} = ${rt146[$j]} ]; then
+                ((f1=1))
+                break
+                else
+                ((f1=0))
+                fi
+        done
+
+[ $f0 = 0 ] && echo "ip route replace ${rtDef[$i]} table ${IP_TB[0]}" >> $FILE
+[ $f1 = 0 ] && echo "ip route replace ${rtDef[$i]} table ${IP_TB[1]}" >> $FILE
+done
+
+for ((i=0;i<${#rt147[@]};i++))
+do
+        for ((j=0;j<${#rtDef[@]};j++))
+        do
+                if [ ${rt147[$i]} = ${rtDef[$j]} ]; then
+                ((f0=1))
+                break
+                else
+                ((f0=0))
+                fi
+        done
+[ $f0 = 0 ] && echo "ip route del ${rt147[$i]} table ${IP_TB[0]}" >> $FILE
+done
+
+for ((i=0;i<${#rt146[@]};i++))
+do
+        for ((j=0;j<${#rtDef[@]};j++))
+        do
+                if [ ${rt146[$i]} = ${rtDef[$j]} ]; then
+                ((f1=1))
+                break
+                else
+                ((f1=0))
+                fi
+        done
+[ $f1 = 0 ] && echo "ip route del ${rt146[$i]} table ${IP_TB[1]}" >> $FILE
+done
+
+#for i in ${IP_TB[@]}
+#do
+#ip route|sed /default/d|awk '{print $0}'|awk '{print"ip route replace "$0}'|awk -v t=$i '{print $0"table "t}' >> $FILE
+#done
+
+#ip route flush table ${IP_TB[0]}
+#ip route flush table ${IP_TB[1]}
+sh $FILE
+
+[ "$(ip route show table Hinet_147|grep default|awk '{print $1,$2,$3}')" != "default via 125.227.147.254" ] &&
+ip route add default via 125.227.147.254 dev $INT1 table ${IP_TB[0]} 2>/dev/null
+[ "$(ip route show table Hinet_146|grep default|awk '{print $1,$2,$3}')" != "default via 125.227.146.254" ] &&
+ip route add default via 125.227.146.254 dev $INT2 table ${IP_TB[1]} 2>/dev/null
+
+if [ "$(ip rule|awk '{print $3,$4,$5}'|grep ${IP_TB[0]}|head -n 1)" != "$INT1_IP lookup ${IP_TB[0]}" ];
+then
+        ip rule add from $INT1_IP table ${IP_TB[0]};
+fi
+if [ "$(ip rule|awk '{print $3,$4,$5}'|grep ${IP_TB[1]}|head -n 1)" != "$INT2_IP lookup ${IP_TB[1]}" ];
+then
+        ip rule add from $INT2_IP table ${IP_TB[1]};
+fi
